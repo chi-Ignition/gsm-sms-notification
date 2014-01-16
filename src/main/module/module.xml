@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<modules>
+	<module>
+		<id>chitek.gsmsmsnotification</id>
+		<name>SMS Notification (GSM Modem)</name>
+		<description>Provides alarm notifications via SMS phone text messages using a GSM modem.</description>
+		<version>${project.version}.${git.commit.time}</version>
+		<changeset>${git.commit.id.abbrev}</changeset>
+  		<freemodule>true</freemodule>
+  		<license>license.html</license>
+		<requiredignitionversion>7.6.0</requiredignitionversion>
+		<requiredframeworkversion>5</requiredframeworkversion>
+		<depends scope="G">com.inductiveautomation.alarm-notification</depends>
+		<jar scope="G">${project.artifactId}-${project.version}.jar</jar>
+		<jar scope="G">commons-net-3.3.jar</jar>
+		<jar scope="G">libphonenumber-5.9.jar</jar>
+		<hook scope="G">com.chitek.ignition.alarming.notification.sms.ModuleHook</hook>
+		</module>
+</modules>

@@ -1,0 +1,227 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<groupId>com.chitek.ignition</groupId>
+	<version>1.6.0</version>
+	<name>gsm-sms-notification</name>
+	<build>
+		<sourceDirectory>src/main/java</sourceDirectory>
+		<resources>
+			<resource>
+				<!-- include ressources from source folder (.properties) -->
+				<directory>src/main/java</directory>
+				<excludes>
+					<exclude>**/*.java</exclude>
+				</excludes>
+			</resource>
+		</resources>
+		<pluginManagement>
+			<plugins>
+				<plugin>
+					<artifactId>maven-install-plugin</artifactId>
+					<version>2.5</version>
+				</plugin>
+			</plugins>
+		</pluginManagement>
+		<plugins>
+			<!-- clean the build directory -->
+			<plugin>
+				<artifactId>maven-clean-plugin</artifactId>
+				<version>2.5</version>
+				<configuration>
+					<filesets>
+						<fileset>
+							<directory>build</directory>
+						</fileset>
+					</filesets>
+				</configuration>
+			</plugin>
+			<!-- skip installation to local repository -->
+			<plugin>
+				<artifactId>maven-install-plugin</artifactId>
+
+				<executions>
+					<execution>
+						<id>default-install</id>
+						<configuration>
+							<skip>true</skip>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<version>3.1</version>
+				<configuration>
+					<source>1.6</source>
+					<target>1.6</target>
+				</configuration>
+			</plugin>
+			<!-- git plugin extracts build number and date -->
+			<plugin>
+				<groupId>pl.project13.maven</groupId>
+				<artifactId>git-commit-id-plugin</artifactId>
+				<version>2.1.7</version>
+				<executions>
+					<execution>
+						<id>git-buildnumber</id>
+						<goals>
+							<goal>revision</goal>
+						</goals>
+						<phase>prepare-package</phase>
+					</execution>
+				</executions>
+				<configuration>
+					<dotGitDirectory>${project.basedir}/.git</dotGitDirectory>
+					<dateFormat>yyyyMMddHH</dateFormat>
+				</configuration>
+			</plugin>
+			<!-- specify manifest fields -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-jar-plugin</artifactId>
+				<version>2.4</version>
+				<configuration>
+					<archive>
+						<manifestEntries>
+							<Module-Version>${project.version}</Module-Version>
+							<Commit>${git.commit.id.abbrev}</Commit>
+						</manifestEntries>
+					</archive>
+				</configuration>
+			</plugin>
+			<!-- create the modl file -->
+			<plugin>
+				<artifactId>maven-assembly-plugin</artifactId>
+				<version>2.4</version>
+				<executions>
+					<execution>
+						<goals>
+							<goal>single</goal>
+						</goals>
+						<phase>package</phase>
+						<configuration>
+							<finalName>${project.artifactId}-${project.version}</finalName>
+							<appendAssemblyId>false</appendAssemblyId>
+							<outputDirectory>target</outputDirectory>
+							<descriptors>
+								<descriptor>src/main/module/assembly.xml</descriptor>
+							</descriptors>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>		
+			<!-- skip default deployment -->
+			<plugin>
+				<artifactId>maven-deploy-plugin</artifactId>
+				<version>2.8.1</version>
+				<executions>
+					<execution>
+						<id>default-deploy</id>
+						<phase>deploy</phase>
+						<goals>
+							<goal>deploy</goal>
+						</goals>
+						<configuration>
+							<skip>true</skip>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
+				<artifactId>maven-antrun-plugin</artifactId>
+				<version>1.7</version>
+				<executions>
+					<!-- rename the .zip to .modl -->
+					<execution>
+						<id>ant-package</id>
+						<phase>package</phase>
+						<goals>
+							<goal>run</goal>
+						</goals>
+						<configuration>
+							<target>
+								<move file="target/${project.artifactId}-${project.version}.zip"
+									tofile="target/${project.artifactId}-${project.version}-unsigned.modl" />
+							</target>
+						</configuration>
+					</execution>
+					<!-- deploy module to developer gateway -->
+					<execution>
+						<id>ant-deploy</id>
+						<phase>deploy</phase>
+						<configuration>
+							<target name="deploy">
+								<!-- Add the postmodule task. This task can deploy a module to a 
+									local Ignition gateway. -->
+								<taskdef name="postmodule" classname="com.inductiveautomation.ant.PostModule"
+									classpathref="maven.plugin.classpath" />
+								<echo message="Installing module on Ignition Gateway." />
+								<postmodule posturl="${local-gateway-url}"
+									modulefile="${basedir}/target/${project.artifactId}-${project.version}-unsigned.modl" />
+							</target>
+						</configuration>
+						<goals>
+							<goal>run</goal>
+						</goals>
+					</execution>
+				</executions>
+				<dependencies>
+					<dependency>
+						<groupId>com.inductiveautomation.ignition</groupId>
+						<artifactId>ant-lib</artifactId>
+						<version>LATEST</version>
+					</dependency>
+				</dependencies>
+			</plugin>
+		</plugins>
+	</build>
+	<artifactId>gsm-sms-notification</artifactId>
+	<dependencies>
+		<dependency>
+			<groupId>com.inductiveautomation.alarmnotification</groupId>
+			<artifactId>alarm-notification-common</artifactId>
+			<version>7.6.4</version>
+			<scope>provided</scope>
+		</dependency>
+		<dependency>
+			<groupId>com.inductiveautomation.alarmnotification</groupId>
+			<artifactId>alarm-notification-gateway-api</artifactId>
+			<version>7.6.4</version>
+			<scope>provided</scope>
+		</dependency>
+		<dependency>
+			<groupId>com.inductiveautomation.ignition</groupId>
+			<artifactId>ignition-common</artifactId>
+			<version>7.6.4</version>
+			<scope>provided</scope>
+		</dependency>
+		<dependency>
+			<groupId>com.inductiveautomation.ignition</groupId>
+			<artifactId>gateway-api</artifactId>
+			<version>7.6.4</version>
+			<scope>provided</scope>
+		</dependency>
+		<dependency>
+			<groupId>com.googlecode.libphonenumber</groupId>
+			<artifactId>libphonenumber</artifactId>
+			<version>5.9</version>
+		</dependency>
+		<dependency>
+			<groupId>commons-net</groupId>
+			<artifactId>commons-net</artifactId>
+			<version>3.3</version>
+		</dependency>
+	</dependencies>
+	<repositories>
+		<repository>
+			<id>releases</id>
+			<name>Releases</name>
+			<url>https://oss.sonatype.org/content/repositories/releases</url>
+		</repository>
+	</repositories>
+	<properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<local-gateway-url>http://10.224.1.104:8088/main/system/DeveloperModuleLoadingServlet</local-gateway-url>
+	</properties>
+</project>
