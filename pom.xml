@@ -2,7 +2,7 @@
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com.chitek.ignition</groupId>
-	<version>1.6.0</version>
+	<version>1.6.1</version>
 	<name>gsm-sms-notification</name>
 	<build>
 		<sourceDirectory>src/main/java</sourceDirectory>
@@ -222,6 +222,6 @@
 	</repositories>
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-		<local-gateway-url>http://10.224.1.104:8088/main/system/DeveloperModuleLoadingServlet</local-gateway-url>
+		<local-gateway-url>http://10.224.10.104:8088/main/system/DeveloperModuleLoadingServlet</local-gateway-url>
 	</properties>
 </project>
