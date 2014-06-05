@@ -158,7 +158,7 @@ public class SmsNotification implements AlarmNotificationProfile, ModemEventHand
 		statusTagProvider.configureTag(profileName + TAG_OPERATOR, DataType.String, TagType.Custom);		
 		statusTagProvider.configureTag(profileName + TAG_SIGNAL_LEVEL, DataType.Int2, TagType.Custom);
 		
-		setStatusTagsNotConnected();
+		setStatusTagsNotConnected(false);
 	}
 	
 	@Override
@@ -217,8 +217,9 @@ public class SmsNotification implements AlarmNotificationProfile, ModemEventHand
 	
 	@Override
 	public void sendNotification(final NotificationContext notificationContext) {
-		if (!modem.isConnected()) {
+		if (!modem.isConnected() && !(notificationContext.getOrDefault(ProfileProperties.TEST_MODE)).booleanValue()) {
 			notificationContext.notificationFailed(new LocalizedString("failed.notConnected"));
+			log.warn("Notification not sent, modem is not connected to network.");
 			return;
 		}
 		
@@ -492,22 +493,20 @@ public class SmsNotification implements AlarmNotificationProfile, ModemEventHand
 
 		synchronized (modemLock) {
 			heartbeatSchedule = null;
-			if (!modem.isConnected()) {
-				log.debugf("Heartbeat cancelled. Modem is not connected.");
-				if (connectionSchedule == null) {
-					scheduleConnect(false);
-				}
-				return;
-			}
 			try {
+				if (!modem.isConnected()) {
+					throw new IOException("Modem not connected");
+				}
 				updateModemStatus();
 				scheduleHeartbeat();
 			} catch (IOException e) {
 				log.errorf("Modem connection faulted: %s", e.getMessage());
 				status = new ProfileStatus(State.Errored, new LocalizedString("chi_sms.error.noModem"));
-				modem.disconnect();
-				scheduleConnect(false);
-				setStatusTagsNotConnected();
+				if (modem.isConnected()) {
+					modem.disconnect();
+				}
+				setStatusTagsNotConnected(false);
+				scheduleConnect(false);	
 			}
 		}
 	}
@@ -519,41 +518,47 @@ public class SmsNotification implements AlarmNotificationProfile, ModemEventHand
 	private void updateModemStatus() throws IOException {
 		
 		synchronized (modemLock) {
-			int signalLevel = 0;
-			String operator;
+			int newSignalLevel = 0;
+			String newOperator;
 
 			int regStatus = modem.getNetworkRegistration();
 			if (regStatus == 1 || regStatus == 5) {
 				// 1 - Home network, 5 - Roaming
-				signalLevel = modem.getSignalLevel();
-				operator = modem.getOperator();
+				newSignalLevel = modem.getSignalLevel();
+				newOperator = modem.getOperator();
 				statusTagProvider.updateValue(profileName + TAG_NETWORK_CONNECTED, true, DataQuality.GOOD_DATA);
 			} else {
 				status = new ProfileStatus(State.Errored, new LocalizedString("chi_sms.status.waitForNetwork"));
-				statusTagProvider.updateValue(profileName + TAG_NETWORK_CONNECTED, false, DataQuality.GOOD_DATA);
-				statusTagProvider.updateValue(profileName + TAG_OPERATOR, "", DataQuality.GOOD_DATA);
-				statusTagProvider.updateValue(profileName + TAG_SIGNAL_LEVEL, 0, DataQuality.GOOD_DATA);
+				setStatusTagsNotConnected(true);
 				return;
 			}
 
-			if (signalLevel != this.signalLevel || !operator.equals(this.operator)) {
-				this.signalLevel = signalLevel;
-				this.operator = operator;
-				status = new ProfileStatus(State.Good, new LocalizedString("chi_sms.status.connected", operator, signalLevel));
+			log.tracef("Modem connection ok. Signal: %ddb - Operator: %s", newSignalLevel, newOperator);
+			
+			if (newSignalLevel != this.signalLevel || !newOperator.equals(this.operator)) {
+				// Update the status only if there are changes
+				this.signalLevel = newSignalLevel;
+				this.operator = newOperator;
+				status = new ProfileStatus(State.Good, new LocalizedString("chi_sms.status.connected", operator, newSignalLevel));
 				statusTagProvider.updateValue(profileName + TAG_OPERATOR, operator, DataQuality.GOOD_DATA);
-				statusTagProvider.updateValue(profileName + TAG_SIGNAL_LEVEL, signalLevel, DataQuality.GOOD_DATA);
+				statusTagProvider.updateValue(profileName + TAG_SIGNAL_LEVEL, newSignalLevel, DataQuality.GOOD_DATA);
 			}
 		}
 	}
 	
 	/**
-	 * Set the status tags to 'not connected to modem' state
+	 * Set the status tags to 'not connected' state
+	 * 
+	 * @param isConnected
+	 * 	The state of the network connection to the modem
 	 */
-	private void setStatusTagsNotConnected() {
-		statusTagProvider.updateValue(profileName + TAG_IS_CONNECTED, false, DataQuality.GOOD_DATA);
+	private void setStatusTagsNotConnected(boolean isConnected) {
+		this.signalLevel = 0;
+		this.operator = "";		
+		statusTagProvider.updateValue(profileName + TAG_IS_CONNECTED, isConnected, DataQuality.GOOD_DATA);
 		statusTagProvider.updateValue(profileName + TAG_NETWORK_CONNECTED, false, DataQuality.GOOD_DATA);
-		statusTagProvider.updateValue(profileName + TAG_OPERATOR, "", DataQuality.GOOD_DATA);
-		statusTagProvider.updateValue(profileName + TAG_SIGNAL_LEVEL, 0, DataQuality.GOOD_DATA);
+		statusTagProvider.updateValue(profileName + TAG_OPERATOR, operator, DataQuality.GOOD_DATA);
+		statusTagProvider.updateValue(profileName + TAG_SIGNAL_LEVEL, signalLevel, DataQuality.GOOD_DATA);
 	}
 
 	@Override
