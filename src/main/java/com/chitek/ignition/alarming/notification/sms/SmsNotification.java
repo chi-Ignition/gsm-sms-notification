@@ -64,6 +64,10 @@ public class SmsNotification implements AlarmNotificationProfile, ModemEventHand
 	static final int RECONNECT_INTERVAL = 10000;
 	/** Interval (milliseconds) for checking the modem connection by sending a heartbeat */
 	static final int HEARTBEAT_INTERVAL = 10000;
+	/** How often to retry sending a notification if an error occurs*/
+	static final int MAX_RETRIES = 3;
+	/** Interval (milliseconds) for retrying to send notification */
+	static final int RETRY_INTERVAL = 5000;
 	
 	// Tag paths
 	static final String TAG_IS_CONNECTED = "/ConnectedToModem";
@@ -97,9 +101,10 @@ public class SmsNotification implements AlarmNotificationProfile, ModemEventHand
 	private ScheduledFuture<?> heartbeatSchedule;
 	private ScheduledFuture<?> connectionSchedule;
 	
-	int signalLevel = 0;
-	String operator = "";
+	private int signalLevel = 0;
+	private String operator = "";
 	private ProfileStatus status;
+	private boolean networkConnectionOk = false;
 	private boolean stopped;
 	private boolean isShutdown;
 	
@@ -128,12 +133,12 @@ public class SmsNotification implements AlarmNotificationProfile, ModemEventHand
 			}
 	    });
 	    
-	    // In two-way mode, we need to handle acknowledgements
+	    // In two-way mode, we need to handle acknowledgments
 	    if (settings.isTwoWayEnabled()) {
 	    	ackHandler = new SmsAckHandler(context, profileRecord);
 	    	// The AckHandler gets no information if an AlarmEvent is cleared or acknowledged somewhere else, so we
 	    	// have to remove stale events periodically.
-	    	// This task will be removed when the excutor is shut down.
+	    	// This task will be removed when the executor is shut down.
 	    	executor.scheduleAtFixedRate(
 	    		new Runnable() {
 					@Override
@@ -217,87 +222,17 @@ public class SmsNotification implements AlarmNotificationProfile, ModemEventHand
 	
 	@Override
 	public void sendNotification(final NotificationContext notificationContext) {
-		if (!modem.isConnected() && !(notificationContext.getOrDefault(ProfileProperties.TEST_MODE)).booleanValue()) {
-			notificationContext.notificationFailed(new LocalizedString("failed.notConnected"));
-			log.warn("Notification not sent, modem is not connected to network.");
-			return;
-		}
 		
 		if(stopped || isShutdown) {
 			notificationContext.notificationFailed(new LocalizedString("failed.stopped"));
 			return;			
 		}
 		
-		executor.execute(new Runnable() {
-			@Override
-			public void run() {
-				String userPath = notificationContext.getUser().getPath().toString();
-				log.debug("sendNotification starting for user: " + userPath);
-				
-				boolean success = false;
-				try {
-					ContactInfo smsContactInfo = null;
-					for (ContactInfo ci : notificationContext.getUser().getContactInfo()) {
-						if (ci.getContactType().equals(ContactType.SMS.getContactType())) {
-							smsContactInfo = ci;
-							break;
-						}
-					}
-					if (smsContactInfo == null) {
-						notificationContext.notificationFailed(new LocalizedString("chi_sms.failed.noSmsContactInfo", userPath));
-						throw new Exception(String.format("Notification failed. No SMS contact info for user %s", userPath));
-					}
-					
-					String message = createMessage(notificationContext);
-					if (message == null || message.isEmpty()) {
-						notificationContext.notificationFailed(new LocalizedString("chi_sms.failed.noMessage"));
-						throw new Exception("Notification failed. No message to send.");
-					}
-					
-					String phoneNumber;
-					try {
-						phoneNumber = normalizePhoneNumber(smsContactInfo.getValue());
-					} catch (NumberParseException e1) {
-						notificationContext.notificationFailed(new LocalizedString("chi_sms.failed.invalidPhoneNumber", userPath));
-						throw new Exception(String.format("Notification failed. Invalid phone number %s for user %s", smsContactInfo.getValue(), userPath));
-					}
-					
-					// In test mode we just write a log entry
-			        boolean testMode = (notificationContext.getOrDefault(ProfileProperties.TEST_MODE)).booleanValue();
-			        if (testMode) {
-			          log.infof("THIS PROFILE IS RUNNING IN TEST MODE. The following sms WOULD have been sent to %s\nMessage: %s", new Object[] { phoneNumber, message });
-			          notificationContext.notificationDone();
-			          return;
-			        }
-			        
-					// Register the notification for acknowledgement (if two-way mode is enabled)
-					if (settings.isTwoWayEnabled()) {
-						message = ackHandler.registerEvent(notificationContext, phoneNumber, message);
-					}
-					
-					// Send the message					
-					if (log.isTraceEnabled()) {
-						log.tracef("Sending notification to %s. Text: %s", phoneNumber, message);
-					} else {
-						log.debugf("Sending notification to %s", phoneNumber);
-					}
-
-					OutboundMessage msg = new OutboundMessage(phoneNumber, message);	
-					modem.sendMessage(msg);
-					log.debugf("Message sent successfully. Ref Nr.: %d", msg.getMsgRef());
-					notificationContext.notificationDone();
-					success = true;
-				} catch (ModemException e) {
-					notificationContext.notificationFailed(e.getLocalizedString());
-				} catch (IOException e) {
-					notificationContext.notificationFailed(new LocalizedString("chi_sms.failed.IOException"));
-				} catch (Exception e) {
-					log.error(e.getMessage());
-				}
-				
-				writeAuditRecord(notificationContext.getAlarmEvents(), userPath, EVENT_SEND, success);
-			}
-		});
+		if (modem.isConnected()) {
+			executor.execute(new NotificationTask(notificationContext));
+		} else {
+			executor.schedule(new NotificationTask(notificationContext), RECONNECT_INTERVAL, TimeUnit.MILLISECONDS);
+		}
 	}
 	
 	/**
@@ -473,7 +408,7 @@ public class SmsNotification implements AlarmNotificationProfile, ModemEventHand
 				stop("chi_sms.error.ModemException", e.getLocalizedMessage());
 			} catch (ConnectException e) {
 				// SMS Gateway could not connect to modem
-				log.error("Could not connect to modem. " + e.getMessage());
+				log.debugf("Could not connect to modem. " + e.getMessage());
 				status = new ProfileStatus(State.Errored, new LocalizedString("chi_sms.error.noModem"));
 				scheduleConnect(false);
 			} catch (Exception e) {
@@ -527,6 +462,7 @@ public class SmsNotification implements AlarmNotificationProfile, ModemEventHand
 				newSignalLevel = modem.getSignalLevel();
 				newOperator = modem.getOperator();
 				statusTagProvider.updateValue(profileName + TAG_NETWORK_CONNECTED, true, DataQuality.GOOD_DATA);
+				networkConnectionOk = true;
 			} else {
 				status = new ProfileStatus(State.Errored, new LocalizedString("chi_sms.status.waitForNetwork"));
 				setStatusTagsNotConnected(true);
@@ -553,6 +489,7 @@ public class SmsNotification implements AlarmNotificationProfile, ModemEventHand
 	 * 	The state of the network connection to the modem
 	 */
 	private void setStatusTagsNotConnected(boolean isConnected) {
+		networkConnectionOk = false;
 		this.signalLevel = 0;
 		this.operator = "";		
 		statusTagProvider.updateValue(profileName + TAG_IS_CONNECTED, isConnected, DataQuality.GOOD_DATA);
@@ -581,4 +518,149 @@ public class SmsNotification implements AlarmNotificationProfile, ModemEventHand
 		}
 	}
 	
+	private class NotificationTask implements Runnable {
+
+		private final NotificationContext notificationContext;
+		private int retries = 0;
+		private LocalizedString error;
+		
+		private String phoneNumber;
+		private String message;
+		
+		public NotificationTask(NotificationContext notificationContext) {
+			this.notificationContext = notificationContext;
+		}
+		
+		@Override
+		public void run() {
+			
+			if (retries == 0) {
+				boolean success = init();
+				if (!success) {
+					log.debugf("Initialisation of notification failed. Notification is not send.");
+					writeAuditRecord(notificationContext.getAlarmEvents(), notificationContext.getUser().getPath().toString(), EVENT_SEND, false);
+					return;
+				}
+			}
+			
+			// In test mode we just write a log entry
+	        boolean testMode = (notificationContext.getOrDefault(ProfileProperties.TEST_MODE)).booleanValue();
+	        if (testMode) {
+	          log.infof("THIS PROFILE IS RUNNING IN TEST MODE. The following sms WOULD have been sent to %s\nMessage: %s", new Object[] { phoneNumber, message });
+	          notificationContext.notificationDone();
+	          return;
+	        }
+			
+			retries ++;
+			
+			if (modem.isConnected() && networkConnectionOk) {
+				boolean success = send();
+				if (success) {
+					notificationContext.notificationDone();
+					return;
+				}
+				if (retries < MAX_RETRIES) {
+					executor.schedule(this, RETRY_INTERVAL, TimeUnit.MILLISECONDS);
+				} else {
+					notificationContext.notificationFailed(error);
+				}
+			} else {
+				if (retries < MAX_RETRIES) {
+					if (modem.isConnected()) {
+						log.debugf("Notification failed, modem not connected to GSM network. Scheduling send retry");
+						executor.schedule(this, heartbeatSchedule!=null?heartbeatSchedule.getDelay(TimeUnit.MILLISECONDS) + 2000:HEARTBEAT_INTERVAL,	TimeUnit.MILLISECONDS);
+					} else {
+						log.debugf("Notification failed, not connected to modem. Scheduling send retry");
+						executor.schedule(this, connectionSchedule != null?connectionSchedule.getDelay(TimeUnit.MILLISECONDS) + 2000 : RECONNECT_INTERVAL,	TimeUnit.MILLISECONDS);
+					}
+				} else {
+					
+					if (modem.isConnected()) {
+						log.debugf("Send notification failed. Not connected to modem.");
+						notificationContext.notificationFailed(new LocalizedString("chi_sms.failed.notConnected"));
+					} else {
+						log.debugf("Send notification failed. Modem not connected to GSM network.");
+						notificationContext.notificationFailed(new LocalizedString("chi_sms.failed.noNetwork"));
+					}
+				}
+			}
+		}
+		
+		public boolean init() {
+			String userPath = notificationContext.getUser().getPath().toString();
+			
+			try {
+				ContactInfo smsContactInfo = null;
+				for (ContactInfo ci : notificationContext.getUser().getContactInfo()) {
+					if (ci.getContactType().equals(ContactType.SMS.getContactType())) {
+						smsContactInfo = ci;
+						break;
+					}
+				}
+				if (smsContactInfo == null) {
+					notificationContext.notificationFailed(new LocalizedString("chi_sms.failed.noSmsContactInfo", userPath));
+					throw new Exception(String.format("Notification failed. No SMS contact info for user %s", userPath));
+				}
+				
+				try {
+					phoneNumber = normalizePhoneNumber(smsContactInfo.getValue());
+				} catch (NumberParseException e1) {
+					notificationContext.notificationFailed(new LocalizedString("chi_sms.failed.invalidPhoneNumber", userPath));
+					throw new Exception(String.format("Notification failed. Invalid phone number %s for user %s", smsContactInfo.getValue(), userPath));
+				}
+				
+				message = createMessage(notificationContext);
+				if (message == null || message.isEmpty()) {
+					notificationContext.notificationFailed(new LocalizedString("chi_sms.failed.noMessage"));
+					throw new Exception("Notification failed. No message to send.");
+				}
+				
+				// Register the notification for acknowledgment (if two-way mode is enabled)
+				if (settings.isTwoWayEnabled()) {
+					message = ackHandler.registerEvent(notificationContext, phoneNumber, message);
+				}
+					
+				return true;
+			} catch (Exception e) {
+				log.error(e.getMessage());
+			}
+			
+			return false;
+		}
+		
+		/**
+		 * Send the notification
+		 * 
+		 * @return
+		 * 	<code>true</code> when the notification was send. If the notification was not send, the field error will contain a message.
+		 */
+		public boolean send() {
+			String userPath = notificationContext.getUser().getPath().toString();
+			log.debug("sendNotification starting for user: " + userPath);
+			
+			try {		        
+				// Send the message					
+				if (log.isTraceEnabled()) {
+					log.tracef("Sending notification to %s. Text: %s", phoneNumber, message);
+				} else {
+					log.debugf("Sending notification to %s", phoneNumber);
+				}
+
+				OutboundMessage msg = new OutboundMessage(phoneNumber, message);	
+				modem.sendMessage(msg);
+				log.debugf("Message sent successfully. Ref Nr.: %d", msg.getMsgRef());
+				return true;
+			} catch (ModemException e) {
+				error = e.getLocalizedString();
+			} catch (IOException e) {
+				error = new LocalizedString("chi_sms.failed.IOException");
+			} catch (Exception e) {
+				error = new LocalizedString("chi_sms.failed.Exception");
+				log.error(e.getMessage());
+			}
+			
+			return false;
+		}
+		
+	}
 }
