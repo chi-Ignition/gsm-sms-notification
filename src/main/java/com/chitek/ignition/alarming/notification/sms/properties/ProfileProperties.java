@@ -36,9 +36,9 @@ public class ProfileProperties {
 	
 	static {
 		SMS_MESSAGE.setExpressionSource(true);
-	    SMS_MESSAGE.setDefaultValue(BundleUtil._("chi_sms.properties.smsMessage.default"));
+	    SMS_MESSAGE.setDefaultValue(BundleUtil.get().getString("chi_sms.properties.smsMessage.default"));
 	    SMS_MESSAGE_CONSOLIDATED.setExpressionSource(true);
-	    SMS_MESSAGE_CONSOLIDATED.setDefaultValue(BundleUtil._("chi_sms.properties.smsMessageConsolidated.default"));
+	    SMS_MESSAGE_CONSOLIDATED.setDefaultValue(BundleUtil.get().getString("chi_sms.properties.smsMessageConsolidated.default"));
 	    TEST_MODE.setDefaultValue(Boolean.valueOf(false));
 	    List<CategorizedProperty.Option<Boolean>> options = new ArrayList<CategorizedProperty.Option<Boolean>>();
 	    // words.yes and words.no are defined in common properties

@@ -31,8 +31,8 @@ import com.inductiveautomation.ignition.alarming.common.notification.Notificatio
 import com.inductiveautomation.ignition.alarming.notification.AlarmNotificationProfile;
 import com.inductiveautomation.ignition.alarming.notification.AlarmNotificationProfileRecord;
 import com.inductiveautomation.ignition.alarming.notification.NotificationContext;
-import com.inductiveautomation.ignition.alarming.notification.ProfileStatus;
-import com.inductiveautomation.ignition.alarming.notification.ProfileStatus.State;
+import com.inductiveautomation.ignition.gateway.model.ProfileStatus;
+import com.inductiveautomation.ignition.gateway.model.ProfileStatus.State;
 import com.inductiveautomation.ignition.common.TypeUtilities;
 import com.inductiveautomation.ignition.common.alarming.AlarmEvent;
 import com.inductiveautomation.ignition.common.config.FallbackPropertyResolver;

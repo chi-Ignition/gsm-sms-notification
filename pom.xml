@@ -2,7 +2,7 @@
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com.chitek.ignition</groupId>
-	<version>1.6.1</version>
+	<version>1.8.1</version>
 	<name>gsm-sms-notification</name>
 	<build>
 		<sourceDirectory>src/main/java</sourceDirectory>
@@ -53,8 +53,8 @@
 				<artifactId>maven-compiler-plugin</artifactId>
 				<version>3.1</version>
 				<configuration>
-					<source>1.6</source>
-					<target>1.6</target>
+					<source>1.8</source>
+					<target>1.8</target>
 				</configuration>
 			</plugin>
 			<!-- git plugin extracts build number and date -->
@@ -129,6 +129,24 @@
 				</executions>
 			</plugin>
 			<plugin>
+                <groupId>com.inductiveautomation.ignitionsdk</groupId>
+                <artifactId>ignition-maven-plugin</artifactId>
+                <version>1.0.9</version>
+                <executions>
+                    <execution>
+                        <phase>deploy</phase>
+                        <goals>
+                            <goal>post</goal>
+                        </goals>
+                        <configuration>
+                        	<gatewayAddress>${local-gateway-url}</gatewayAddress>
+                        	<moduleFile>${basedir}/target/${project.artifactId}-${project.version}-unsigned.modl</moduleFile>
+                        	<moduleName>${project.artifactId}-${project.version}</moduleName>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+			<plugin>
 				<artifactId>maven-antrun-plugin</artifactId>
 				<version>1.7</version>
 				<executions>
@@ -146,61 +164,39 @@
 							</target>
 						</configuration>
 					</execution>
-					<!-- deploy module to developer gateway -->
-					<execution>
-						<id>ant-deploy</id>
-						<phase>deploy</phase>
-						<configuration>
-							<target name="deploy">
-								<!-- Add the postmodule task. This task can deploy a module to a 
-									local Ignition gateway. -->
-								<taskdef name="postmodule" classname="com.inductiveautomation.ant.PostModule"
-									classpathref="maven.plugin.classpath" />
-								<echo message="Installing module on Ignition Gateway." />
-								<postmodule posturl="${local-gateway-url}"
-									modulefile="${basedir}/target/${project.artifactId}-${project.version}-unsigned.modl" />
-							</target>
-						</configuration>
-						<goals>
-							<goal>run</goal>
-						</goals>
-					</execution>
 				</executions>
-				<dependencies>
-					<dependency>
-						<groupId>com.inductiveautomation.ignition</groupId>
-						<artifactId>ant-lib</artifactId>
-						<version>LATEST</version>
-					</dependency>
-				</dependencies>
 			</plugin>
 		</plugins>
 	</build>
 	<artifactId>gsm-sms-notification</artifactId>
 	<dependencies>
 		<dependency>
-			<groupId>com.inductiveautomation.alarmnotification</groupId>
+			<groupId>com.inductiveautomation.ignitionsdk</groupId>
 			<artifactId>alarm-notification-common</artifactId>
-			<version>7.6.4</version>
+			<version>7.8.0</version>
 			<scope>provided</scope>
+			<type>pom</type>
 		</dependency>
 		<dependency>
-			<groupId>com.inductiveautomation.alarmnotification</groupId>
+			<groupId>com.inductiveautomation.ignitionsdk</groupId>
 			<artifactId>alarm-notification-gateway-api</artifactId>
-			<version>7.6.4</version>
+			<version>7.8.0</version>
 			<scope>provided</scope>
+			<type>pom</type>
 		</dependency>
 		<dependency>
-			<groupId>com.inductiveautomation.ignition</groupId>
+			<groupId>com.inductiveautomation.ignitionsdk</groupId>
 			<artifactId>ignition-common</artifactId>
-			<version>7.6.4</version>
+			<version>7.8.0</version>
 			<scope>provided</scope>
+			<type>pom</type>
 		</dependency>
 		<dependency>
-			<groupId>com.inductiveautomation.ignition</groupId>
+			<groupId>com.inductiveautomation.ignitionsdk</groupId>
 			<artifactId>gateway-api</artifactId>
-			<version>7.6.4</version>
+			<version>7.8.0</version>
 			<scope>provided</scope>
+			<type>pom</type>
 		</dependency>
 		<dependency>
 			<groupId>com.googlecode.libphonenumber</groupId>
@@ -215,13 +211,27 @@
 	</dependencies>
 	<repositories>
 		<repository>
-			<id>releases</id>
-			<name>Releases</name>
+			<id>sonatype_releases</id>
+			<name>SonatypeReleases</name>
 			<url>https://oss.sonatype.org/content/repositories/releases</url>
 		</repository>
+		<repository>
+			<id>ignition-releases</id>
+			<url>http://nexus.inductiveautomation.com:8081/nexus/content/repositories/inductiveautomation-releases</url>
+		</repository>
+		<repository>
+			<id>ignition-thirdparty</id>
+			<url>http://nexus.inductiveautomation.com:8081/nexus/content/repositories/inductiveautomation-thirdparty</url>
+		</repository>
 	</repositories>
+	<pluginRepositories>
+        <pluginRepository>
+            <id>releases</id>
+            <url>http://nexus.inductiveautomation.com:8081/nexus/content/repositories/inductiveautomation-releases</url>
+        </pluginRepository>
+    </pluginRepositories>
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-		<local-gateway-url>http://10.224.10.104:8088/main/system/DeveloperModuleLoadingServlet</local-gateway-url>
+		<local-gateway-url>http://10.224.10.104:8088</local-gateway-url>
 	</properties>
 </project>
