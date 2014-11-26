@@ -86,7 +86,7 @@ public class SmsAckHandler {
 		// Add the ack code to the message
 		if (ackCode != null) {
 			log.debugf("Registered notification for user %s. AckCode: '%s'", userPath.toStringSimple(), ackCode);
-			return BundleUtil._("chi_sms.messageWithAck", message, ackCode);
+			return BundleUtil.get().getString("chi_sms.messageWithAck", message, ackCode);
 		} else {
 			// No acknowledeable events given. Just return the message as is.
 			log.debugf("registerEvent called with no acknowledgeable event.");

@@ -8,8 +8,8 @@
 		<changeset>${git.commit.id.abbrev}</changeset>
   		<freemodule>true</freemodule>
   		<license>license.html</license>
-		<requiredignitionversion>7.6.0</requiredignitionversion>
-		<requiredframeworkversion>5</requiredframeworkversion>
+		<requiredignitionversion>7.7.0</requiredignitionversion>
+		<requiredframeworkversion>6</requiredframeworkversion>
 		<depends scope="G">com.inductiveautomation.alarm-notification</depends>
 		<jar scope="G">${project.artifactId}-${project.version}.jar</jar>
 		<jar scope="G">commons-net-3.3.jar</jar>
