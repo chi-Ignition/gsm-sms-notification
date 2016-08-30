@@ -94,5 +94,8 @@ public class ModuleHook extends AbstractGatewayModuleHook implements ModuleServi
 			Logger.getLogger(SmsNotification.LOGGER_NAME).debug("AlarmNotificationContext has been shut down");
 		}
 	}
-
+	
+	public boolean isFreeModule() {
+		return true;
+	}
 }
