@@ -2,7 +2,7 @@
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com.chitek.ignition</groupId>
-	<version>1.8.2</version>
+	<version>1.9.2</version>
 	<name>gsm-sms-notification</name>
 	<build>
 		<sourceDirectory>src/main/java</sourceDirectory>
@@ -131,7 +131,7 @@
 			<plugin>
                 <groupId>com.inductiveautomation.ignitionsdk</groupId>
                 <artifactId>ignition-maven-plugin</artifactId>
-                <version>1.0.9</version>
+                <version>1.0.11</version>
                 <executions>
                     <execution>
                         <phase>deploy</phase>
@@ -173,28 +173,28 @@
 		<dependency>
 			<groupId>com.inductiveautomation.ignitionsdk</groupId>
 			<artifactId>alarm-notification-common</artifactId>
-			<version>7.8.0</version>
+			<version>7.9.0</version>
 			<scope>provided</scope>
 			<type>pom</type>
 		</dependency>
 		<dependency>
 			<groupId>com.inductiveautomation.ignitionsdk</groupId>
 			<artifactId>alarm-notification-gateway-api</artifactId>
-			<version>7.8.0</version>
+			<version>7.9.0</version>
 			<scope>provided</scope>
 			<type>pom</type>
 		</dependency>
 		<dependency>
 			<groupId>com.inductiveautomation.ignitionsdk</groupId>
 			<artifactId>ignition-common</artifactId>
-			<version>7.8.0</version>
+			<version>7.9.0</version>
 			<scope>provided</scope>
 			<type>pom</type>
 		</dependency>
 		<dependency>
 			<groupId>com.inductiveautomation.ignitionsdk</groupId>
 			<artifactId>gateway-api</artifactId>
-			<version>7.8.0</version>
+			<version>7.9.0</version>
 			<scope>provided</scope>
 			<type>pom</type>
 		</dependency>
@@ -232,6 +232,6 @@
     </pluginRepositories>
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-		<local-gateway-url>http://10.224.10.104:8088</local-gateway-url>
+		<local-gateway-url>http://10.224.10.134:8088</local-gateway-url>
 	</properties>
 </project>

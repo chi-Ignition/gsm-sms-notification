@@ -14,7 +14,6 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.lang3.StringUtils;
-import org.apache.log4j.Logger;
 
 import com.chitek.ignition.alarming.notification.sms.SmsAckHandler.AckResult;
 import com.chitek.ignition.alarming.notification.sms.modem.InboundMessage;
@@ -110,7 +109,7 @@ public class SmsNotification implements AlarmNotificationProfile, ModemEventHand
 	
 	public SmsNotification(GatewayContext context, AlarmNotificationProfileRecord profileRecord, GsmSmsNotificationSettings settings, SimpleTagProvider statusTagProvider) {
 		this.context = context;
-		this.log = new LoggerEx(Logger.getLogger(String.format("%s[%s]", LOGGER_NAME, profileRecord.getName())));
+		this.log = LoggerEx.newBuilder().build(String.format("%s[%s]", LOGGER_NAME, profileRecord.getName()));
 		log.debug("Profile created");
 	    this.settings = settings;
 	    this.profileName = profileRecord.getName();

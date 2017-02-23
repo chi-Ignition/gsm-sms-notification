@@ -10,8 +10,6 @@ import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.apache.log4j.Logger;
-
 import com.inductiveautomation.ignition.alarming.notification.AlarmNotificationProfileRecord;
 import com.inductiveautomation.ignition.alarming.notification.NotificationContext;
 import com.inductiveautomation.ignition.common.BundleUtil;
@@ -44,7 +42,7 @@ public class SmsAckHandler {
 	
 	public SmsAckHandler(GatewayContext context, AlarmNotificationProfileRecord profileRecord) {
 		this.context = context;
-		this.log = new LoggerEx(Logger.getLogger(String.format("%s[%s]", LOGGER_NAME, profileRecord.getName())));
+		this.log = LoggerEx.newBuilder().build(String.format("%s[%s]", LOGGER_NAME, profileRecord.getName()));
 	}
 	
 	/**

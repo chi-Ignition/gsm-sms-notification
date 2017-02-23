@@ -1,8 +1,5 @@
 package com.chitek.ignition.alarming.notification.sms;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import org.apache.wicket.Application;
 import org.apache.wicket.Component;
 import org.apache.wicket.Page;
@@ -56,13 +53,9 @@ public class SmsNotificationProfileType extends AlarmNotificationProfileType {
 	}
 
 	@Override
-	public List<AbstractRecordInstanceAction<? extends PersistentRecord>> getRecordInstanceActions(
-			RepeatingView view,	IConfigPage configPage, ConfigPanel parentPanel, PersistentRecord mainRecord, PersistentRecord subRecord) {
-		
-		List<AbstractRecordInstanceAction<? extends PersistentRecord>> actions = new ArrayList<AbstractRecordInstanceAction<? extends PersistentRecord>>(1);
-		actions.add(new RestartAction<PersistentRecord>(view.newChildId(), configPage, parentPanel, mainRecord));
-		return actions;
-	}
+	public void addRecordInstanceActions(RepeatingView view, IConfigPage configPage, ConfigPanel parentPanel, PersistentRecord mainRecord, PersistentRecord subRecord) {
+		view.add(new RestartAction<PersistentRecord>(view.newChildId(), configPage, parentPanel, mainRecord));
+	};
 	
 	/**
 	 * Restart the notification profile

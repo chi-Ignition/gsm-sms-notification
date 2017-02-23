@@ -205,7 +205,7 @@ public class ModemDriver {
 				int smscLen = (2 + smscNumberLen) / 2;
 				pduSize = pduSize - smscLen - 1;
 			}
-			if (log.getLogger().isTraceEnabled()) {
+			if (log.isTraceEnabled()) {
 				log.tracef("Sending PDU:\r%s" , new PduParser().parsePdu(pdu).toString());
 			}
 			
