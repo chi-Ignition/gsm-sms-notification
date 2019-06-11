@@ -8,12 +8,12 @@
 		<changeset>${git.commit.id.abbrev}</changeset>
   		<freemodule>true</freemodule>
   		<license>license.html</license>
-		<requiredignitionversion>7.8.0</requiredignitionversion>
-		<requiredframeworkversion>7</requiredframeworkversion>
+		<requiredignitionversion>8.0.0</requiredignitionversion>
+		<requiredframeworkversion>8</requiredframeworkversion>
 		<depends scope="G">com.inductiveautomation.alarm-notification</depends>
 		<jar scope="G">${project.artifactId}-${project.version}.jar</jar>
-		<jar scope="G">commons-net-3.3.jar</jar>
-		<jar scope="G">libphonenumber-5.9.jar</jar>
+		<jar scope="G">commons-net-3.6.jar</jar>
+		<jar scope="G">libphonenumber-8.10.11.jar</jar>
 		<hook scope="G">com.chitek.ignition.alarming.notification.sms.ModuleHook</hook>
 		</module>
 </modules>

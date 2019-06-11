@@ -6,12 +6,13 @@ import com.chitek.ignition.alarming.notification.sms.properties.ProfilePropertie
 import com.inductiveautomation.ignition.alarming.AlarmNotificationContext;
 import com.inductiveautomation.ignition.common.BundleUtil;
 import com.inductiveautomation.ignition.common.licensing.LicenseState;
-import com.inductiveautomation.ignition.common.sqltags.model.types.TagEditingFlags;
-import com.inductiveautomation.ignition.common.sqltags.model.types.TagType;
+import com.inductiveautomation.ignition.common.sqltags.model.TagProviderMeta;
+
 import com.inductiveautomation.ignition.gateway.model.AbstractGatewayModuleHook;
 import com.inductiveautomation.ignition.gateway.model.GatewayContext;
 import com.inductiveautomation.ignition.gateway.services.ModuleServiceConsumer;
-import com.inductiveautomation.ignition.gateway.sqltags.simple.SimpleTagProvider;
+import com.inductiveautomation.ignition.gateway.tags.managed.ManagedTagProvider;
+import com.inductiveautomation.ignition.gateway.tags.managed.ProviderConfiguration;
 
 public class ModuleHook extends AbstractGatewayModuleHook implements ModuleServiceConsumer {
 
@@ -21,14 +22,19 @@ public class ModuleHook extends AbstractGatewayModuleHook implements ModuleServi
 	private GatewayContext gatewayContext;
 	private AlarmNotificationContext alarmNotificationContext;
 	
-	private SimpleTagProvider statusTagProvider;
+	private ManagedTagProvider statusTagProvider;
 
 	@Override
 	public void setup(GatewayContext gatewayContext) {
 		this.gatewayContext = gatewayContext;
 		
-		statusTagProvider = new SimpleTagProvider(TAG_PROVIDER_NAME);
-		statusTagProvider.configureTagType(TagType.Custom, TagEditingFlags.STANDARD_STATUS, null);
+        ProviderConfiguration configuration = new ProviderConfiguration(TAG_PROVIDER_NAME);
+        configuration.setAllowTagCustomization(false);
+        configuration.setPersistTags(false);
+        configuration.setPersistValues(false);
+        configuration.setAttribute(TagProviderMeta.FLAG_HAS_OPCBROWSE, false);
+
+        statusTagProvider = gatewayContext.getTagManager().getOrCreateManagedProvider(configuration);
 		
 		// Register class with BundleUtil for localization
 		// We use our own prefix 'chi_sms' to avoid naming conflicts
@@ -41,13 +47,6 @@ public class ModuleHook extends AbstractGatewayModuleHook implements ModuleServi
 		gatewayContext.getAlarmManager().registerExtendedConfigProperties(MODULE_ID, ProfileProperties.CUSTOM_SMS_MESSAGE);
 
 		gatewayContext.getModuleServicesManager().subscribe(AlarmNotificationContext.class, this);
-		
-		// Start status tag provider
-		try {
-			statusTagProvider.startup(gatewayContext);
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
 	}
 
 	@Override
@@ -65,8 +64,12 @@ public class ModuleHook extends AbstractGatewayModuleHook implements ModuleServi
 			}
 		}
 		
-		// Shutdown tag provider
-		statusTagProvider.shutdown();
+		try {
+			// Shutdown tag provider
+			statusTagProvider.shutdown(true);
+		} catch (Exception e) {
+			Logger.getLogger(SmsNotification.LOGGER_NAME).error("Error stopping ManagedTagProvider example module.", e);
+		}
 		
 		// Remove localization
 		BundleUtil.get().removeBundle("chi_sms");

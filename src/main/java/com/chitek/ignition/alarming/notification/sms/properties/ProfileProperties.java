@@ -7,7 +7,7 @@ import com.inductiveautomation.ignition.alarming.common.notification.BasicNotifi
 import com.inductiveautomation.ignition.common.BundleUtil;
 import com.inductiveautomation.ignition.common.alarming.config.AlarmProperty;
 import com.inductiveautomation.ignition.common.alarming.config.BasicAlarmProperty;
-import com.inductiveautomation.ignition.common.config.CategorizedProperty;
+import com.inductiveautomation.ignition.common.config.ConfigurationProperty;
 import com.inductiveautomation.ignition.common.i18n.LocalizedString;
 
 /**
@@ -40,10 +40,10 @@ public class ProfileProperties {
 	    SMS_MESSAGE_CONSOLIDATED.setExpressionSource(true);
 	    SMS_MESSAGE_CONSOLIDATED.setDefaultValue(BundleUtil.get().getString("chi_sms.properties.smsMessageConsolidated.default"));
 	    TEST_MODE.setDefaultValue(Boolean.valueOf(false));
-	    List<CategorizedProperty.Option<Boolean>> options = new ArrayList<CategorizedProperty.Option<Boolean>>();
+	    List<ConfigurationProperty.Option<Boolean>> options = new ArrayList<>();
 	    // words.yes and words.no are defined in common properties
-	    options.add(new CategorizedProperty.Option<Boolean>(Boolean.valueOf(true), new LocalizedString("words.yes", new Object[0])));
-	    options.add(new CategorizedProperty.Option<Boolean>(Boolean.valueOf(false), new LocalizedString("words.no", new Object[0])));
+		options.add(new ConfigurationProperty.Option<>(true, new LocalizedString("words.yes")));
+		options.add(new ConfigurationProperty.Option<>(false, new LocalizedString("words.no")));
 	    TEST_MODE.setOptions(options);
 	}
 

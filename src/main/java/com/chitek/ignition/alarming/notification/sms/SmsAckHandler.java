@@ -175,7 +175,7 @@ public class SmsAckHandler {
 			do {
 				if (lastCode == 9999) lastCode = 0;
 				ackCode = lastCode++;
-			} while (notifications.containsKey(ackCode));
+			} while (notifications.containsKey(String.format("%04d", ackCode)));
 			lastCode = ackCode;
 			
 			Notification notification = getNotification(notificationContext.getAlarmEvents());

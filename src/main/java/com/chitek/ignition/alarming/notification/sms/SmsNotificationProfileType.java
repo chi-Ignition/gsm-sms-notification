@@ -13,7 +13,7 @@ import com.inductiveautomation.ignition.alarming.notification.AlarmNotificationP
 import com.inductiveautomation.ignition.gateway.localdb.persistence.PersistentRecord;
 import com.inductiveautomation.ignition.gateway.localdb.persistence.RecordMeta;
 import com.inductiveautomation.ignition.gateway.model.GatewayContext;
-import com.inductiveautomation.ignition.gateway.sqltags.simple.SimpleTagProvider;
+import com.inductiveautomation.ignition.gateway.tags.managed.ManagedTagProvider;
 import com.inductiveautomation.ignition.gateway.web.components.ConfigPanel;
 import com.inductiveautomation.ignition.gateway.web.components.ConfirmationPanel;
 import com.inductiveautomation.ignition.gateway.web.components.IConfirmedTask;
@@ -24,13 +24,13 @@ import com.inductiveautomation.ignition.gateway.web.pages.IConfigPage;
 public class SmsNotificationProfileType extends AlarmNotificationProfileType {
 
 	/** The tag provider is passed to profiles on creation */
-	private transient SimpleTagProvider statusTagProvider;
+	private transient ManagedTagProvider statusTagProvider;
 	
 	/**
 	 * @param statusTagProvider
 	 * 		The tag provider for status information
 	 */
-	 public SmsNotificationProfileType(SimpleTagProvider statusTagProvider)
+	 public SmsNotificationProfileType(ManagedTagProvider statusTagProvider)
 	  {
 	    super("chitek.alarming.GsmSmsNotification", "chi_sms.ProfileType.Name", "chi_sms.ProfileType.Description");
 	    this.statusTagProvider = statusTagProvider;

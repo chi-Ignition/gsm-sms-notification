@@ -30,8 +30,6 @@ import com.inductiveautomation.ignition.alarming.common.notification.Notificatio
 import com.inductiveautomation.ignition.alarming.notification.AlarmNotificationProfile;
 import com.inductiveautomation.ignition.alarming.notification.AlarmNotificationProfileRecord;
 import com.inductiveautomation.ignition.alarming.notification.NotificationContext;
-import com.inductiveautomation.ignition.gateway.model.ProfileStatus;
-import com.inductiveautomation.ignition.gateway.model.ProfileStatus.State;
 import com.inductiveautomation.ignition.common.TypeUtilities;
 import com.inductiveautomation.ignition.common.alarming.AlarmEvent;
 import com.inductiveautomation.ignition.common.config.FallbackPropertyResolver;
@@ -41,9 +39,8 @@ import com.inductiveautomation.ignition.common.expressions.parsing.StringParser;
 import com.inductiveautomation.ignition.common.i18n.LocalizedString;
 import com.inductiveautomation.ignition.common.model.ApplicationScope;
 import com.inductiveautomation.ignition.common.model.values.QualifiedValue;
-import com.inductiveautomation.ignition.common.sqltags.model.types.DataQuality;
+import com.inductiveautomation.ignition.common.model.values.QualityCode;
 import com.inductiveautomation.ignition.common.sqltags.model.types.DataType;
-import com.inductiveautomation.ignition.common.sqltags.model.types.TagType;
 import com.inductiveautomation.ignition.common.user.ContactInfo;
 import com.inductiveautomation.ignition.common.user.ContactType;
 import com.inductiveautomation.ignition.common.util.AuditStatus;
@@ -54,7 +51,9 @@ import com.inductiveautomation.ignition.gateway.expressions.AlarmEventCollection
 import com.inductiveautomation.ignition.gateway.expressions.FormattedExpressionParseContext;
 import com.inductiveautomation.ignition.gateway.localdb.persistence.PersistenceSession;
 import com.inductiveautomation.ignition.gateway.model.GatewayContext;
-import com.inductiveautomation.ignition.gateway.sqltags.simple.SimpleTagProvider;
+import com.inductiveautomation.ignition.gateway.model.ProfileStatus;
+import com.inductiveautomation.ignition.gateway.model.ProfileStatus.State;
+import com.inductiveautomation.ignition.gateway.tags.managed.ManagedTagProvider;
 
 public class SmsNotification implements AlarmNotificationProfile, ModemEventHandler {
 
@@ -93,7 +92,7 @@ public class SmsNotification implements AlarmNotificationProfile, ModemEventHand
 	private final Object modemLock = new Object();
 
 	/** The tag provider for modem status */
-	SimpleTagProvider statusTagProvider;
+	ManagedTagProvider statusTagProvider;
 	
 	/** A single thread executor used for modem operations */
 	private ScheduledExecutorService  executor;
@@ -107,7 +106,7 @@ public class SmsNotification implements AlarmNotificationProfile, ModemEventHand
 	private boolean stopped;
 	private boolean isShutdown;
 	
-	public SmsNotification(GatewayContext context, AlarmNotificationProfileRecord profileRecord, GsmSmsNotificationSettings settings, SimpleTagProvider statusTagProvider) {
+	public SmsNotification(GatewayContext context, AlarmNotificationProfileRecord profileRecord, GsmSmsNotificationSettings settings, ManagedTagProvider statusTagProvider) {
 		this.context = context;
 		this.log = LoggerEx.newBuilder().build(String.format("%s[%s]", LOGGER_NAME, profileRecord.getName()));
 		log.debug("Profile created");
@@ -157,10 +156,10 @@ public class SmsNotification implements AlarmNotificationProfile, ModemEventHand
 	}
 
 	private void initStatusTags() {
-		statusTagProvider.configureTag(profileName + TAG_IS_CONNECTED, DataType.Boolean, TagType.Custom);
-		statusTagProvider.configureTag(profileName + TAG_NETWORK_CONNECTED, DataType.Boolean, TagType.Custom);		
-		statusTagProvider.configureTag(profileName + TAG_OPERATOR, DataType.String, TagType.Custom);		
-		statusTagProvider.configureTag(profileName + TAG_SIGNAL_LEVEL, DataType.Int2, TagType.Custom);
+		statusTagProvider.configureTag(profileName + TAG_IS_CONNECTED, DataType.Boolean);
+		statusTagProvider.configureTag(profileName + TAG_NETWORK_CONNECTED, DataType.Boolean);		
+		statusTagProvider.configureTag(profileName + TAG_OPERATOR, DataType.String);		
+		statusTagProvider.configureTag(profileName + TAG_SIGNAL_LEVEL, DataType.Int2);
 		
 		setStatusTagsNotConnected(false);
 	}
@@ -399,7 +398,7 @@ public class SmsNotification implements AlarmNotificationProfile, ModemEventHand
 				modem.setEventHandler(this);
 				modem.connect();
 				status = new ProfileStatus(State.Errored, new LocalizedString("chi_sms.status.waitForNetwork"));
-				statusTagProvider.updateValue(profileName + TAG_IS_CONNECTED, true, DataQuality.GOOD_DATA);
+				statusTagProvider.updateValue(profileName + TAG_IS_CONNECTED, true, QualityCode.Good);
 				scheduleHeartbeat();
 			} catch (ModemException e) {
 				// SMS Gateway could not be started (e.g a wrong SIM-Pin or an invalid setup
@@ -460,7 +459,7 @@ public class SmsNotification implements AlarmNotificationProfile, ModemEventHand
 				// 1 - Home network, 5 - Roaming
 				newSignalLevel = modem.getSignalLevel();
 				newOperator = modem.getOperator();
-				statusTagProvider.updateValue(profileName + TAG_NETWORK_CONNECTED, true, DataQuality.GOOD_DATA);
+				statusTagProvider.updateValue(profileName + TAG_NETWORK_CONNECTED, true, QualityCode.Good);
 				networkConnectionOk = true;
 			} else {
 				status = new ProfileStatus(State.Errored, new LocalizedString("chi_sms.status.waitForNetwork"));
@@ -475,8 +474,8 @@ public class SmsNotification implements AlarmNotificationProfile, ModemEventHand
 				this.signalLevel = newSignalLevel;
 				this.operator = newOperator;
 				status = new ProfileStatus(State.Good, new LocalizedString("chi_sms.status.connected", operator, newSignalLevel));
-				statusTagProvider.updateValue(profileName + TAG_OPERATOR, operator, DataQuality.GOOD_DATA);
-				statusTagProvider.updateValue(profileName + TAG_SIGNAL_LEVEL, newSignalLevel, DataQuality.GOOD_DATA);
+				statusTagProvider.updateValue(profileName + TAG_OPERATOR, operator, QualityCode.Good);
+				statusTagProvider.updateValue(profileName + TAG_SIGNAL_LEVEL, newSignalLevel, QualityCode.Good);
 			}
 		}
 	}
@@ -491,10 +490,10 @@ public class SmsNotification implements AlarmNotificationProfile, ModemEventHand
 		networkConnectionOk = false;
 		this.signalLevel = 0;
 		this.operator = "";		
-		statusTagProvider.updateValue(profileName + TAG_IS_CONNECTED, isConnected, DataQuality.GOOD_DATA);
-		statusTagProvider.updateValue(profileName + TAG_NETWORK_CONNECTED, false, DataQuality.GOOD_DATA);
-		statusTagProvider.updateValue(profileName + TAG_OPERATOR, operator, DataQuality.GOOD_DATA);
-		statusTagProvider.updateValue(profileName + TAG_SIGNAL_LEVEL, signalLevel, DataQuality.GOOD_DATA);
+		statusTagProvider.updateValue(profileName + TAG_IS_CONNECTED, isConnected, QualityCode.Good);
+		statusTagProvider.updateValue(profileName + TAG_NETWORK_CONNECTED, false, QualityCode.Good);
+		statusTagProvider.updateValue(profileName + TAG_OPERATOR, operator, QualityCode.Good);
+		statusTagProvider.updateValue(profileName + TAG_SIGNAL_LEVEL, signalLevel, QualityCode.Good);
 	}
 
 	@Override
